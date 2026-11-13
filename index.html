@@ -29,7 +29,7 @@ main{display:block;height:calc(100dvh - 64px);min-height:500px}
 import * as THREE from 'three';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const stages=[
  {name:'Produção',time:1800,desc:'Alimentação do Turbo Filtro, separação e envio do filtrado ao tanque de processo.',nodes:['Alimentação','Turbo Filtro','Tanque','Processo'],mode:'flow',state:'Motor ligado • Alimentação aberta • Bomba CIP desligada'},
- {name:'Limpeza periódica',time:15,desc:'Pulso de água quente com o Turbo Filtro em operação. Referência: a cada 30 minutos, por 10 a 20 segundos.',nodes:['Água 95 °C','Turbo Filtro','Processo'],mode:'hot',state:'Motor ligado • Lavagem periódica ativa'},
+ {name:'Limpeza periódica',time:15,desc:'Pulso de água quente com o Turbo Filtro em operação.',nodes:['Água 95 °C','Turbo Filtro','Processo'],mode:'hot',state:'Motor ligado • Lavagem periódica ativa'},
  {name:'Pré-limpeza CIP',time:90,desc:'Interrupção da alimentação e recuperação do produto residual com água quente.',nodes:['Água 95 °C','Turbo Filtro','Recuperação'],mode:'hot',state:'Alimentação interrompida • Pré-limpeza em andamento'},
  {name:'CIP com solução',time:120,desc:'Circulação da solução de limpeza a partir do tanque CIP por meio da bomba.',nodes:['Tanque CIP','Bomba CIP','Turbo Filtro','Retorno CIP'],mode:'cip',state:'Bomba CIP ligada • Circuito de limpeza ativo'},
  {name:'Enxágue',time:60,desc:'Remoção de resíduos de soda com água, sem reaproveitamento.',nodes:['Água','Turbo Filtro','Descarte'],mode:'hot',state:'Bomba CIP desligada • Enxágue em andamento'},
@@ -250,6 +250,7 @@ $('commercialDemo').onclick=()=>{isolatedStage=null;$('startFullDemo').click();$
 // Painel comercial: dados espelhados dos controles existentes, sem habilitar configuração.
 const commercialStageButtons=[];
 stages.forEach((st,i)=>{
+ if(i>=5)return; // O retorno é interno, sem sexto quadro comercial.
  const b=document.createElement('button');b.className='commercial-step';
  b.innerHTML='<span class="signal"></span><span><b>'+(i+1)+'. '+st.name+'</b><small>'+st.desc+'</small></span>';
  b.onclick=()=>{isolatedStage=null;continuousLoop=false;fullDemo=false;playing=false;select(i);$('commercialCycle').textContent='▶ Iniciar ciclo contínuo';commercialSync();};
