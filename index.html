@@ -215,15 +215,19 @@ function refreshLabels(){const show=labelsVisible&&model;const active={reject:au
  for(const [key,el] of Object.entries(labelElements)){el.style.display='none';if(!show||(playing?!active[key]:!auxAnchors[key]))continue;const names=auxParts[key];if(!names?.length&&!auxAnchors[key])continue;if(auxAnchors[key]){labelPoint.fromArray(auxAnchors[key]);model.localToWorld(labelPoint);}else{const mesh=names.map(n=>partMeshes.get(n)).find(Boolean);if(!mesh)continue;labelBox.setFromObject(mesh);if(labelBox.isEmpty())continue;labelBox.getCenter(labelPoint);}labelPoint.project(camera);if(labelPoint.z<-1||labelPoint.z>1)continue;const x=(labelPoint.x+1)*w/2,y=(1-labelPoint.y)*h/2;if(x<12||x>w-135||y<38||y>h-28)continue;el.style.left=x+'px';el.style.top=y+'px';el.style.display='block';}
  {const el=labelElements.cipTankSecond;el.style.display='none';if(show&&cipSecondAnchor){labelPoint.fromArray(cipSecondAnchor);model.localToWorld(labelPoint);labelPoint.project(camera);const x=(labelPoint.x+1)*w/2,y=(1-labelPoint.y)*h/2;if(labelPoint.z>=-1&&labelPoint.z<=1&&x>=12&&x<=w-135&&y>=38&&y<=h-28){el.style.left=x+'px';el.style.top=y+'px';el.style.display='block';}}}
  for(const key of fixedKeys){const el=labelElements['fixed_'+key];el.style.display='none';if(!show||!fixedAnchors[key])continue;labelPoint.fromArray(fixedAnchors[key]);model.localToWorld(labelPoint);labelPoint.project(camera);if(labelPoint.z<-1||labelPoint.z>1)continue;const x=(labelPoint.x+1)*w/2,y=(1-labelPoint.y)*h/2;if(x<12||x>w-135||y<38||y>h-28)continue;el.style.left=x+'px';el.style.top=y+'px';el.style.display='block';}}
-let isolatedStage=null,isolatedElapsed=0;
+let isolatedStage=null,isolatedElapsed=0;const isolatedVisualDurations=[14,14,14,16,14];
 let last=performance.now(),acc=0;
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.1);last=now;
- if(playing){if(fullDemo){fullDemoElapsed+=dt;if(fullDemoElapsed>=75){if(continuousLoop){fullDemoElapsed=fullDemoElapsed%75;waveClock=0;washWaveClock=0;demoElapsed=0;washElapsed=0;elapsed=0;current=0;operationMode='production';washActive=false;routeProgress={flow:0,hot:0,cip:0};lastStage=0;}else{fullDemoElapsed=75;playing=false;fullDemo=false;}}if(fullDemo)applyFullDemo(fullDemoElapsed);}const opDt=dt*speed;waveClock+=dt*flowAnimationSpeed*(speed/60)*(operationMode==='production'?3.25:1);for(const key of Object.keys(auxClocks)){if(key!=='reject'||auxIsProduction())auxClocks[key]+=dt*auxSpeeds[key]*(speed/60);}pumpClock+=dt*(speed/60);if(washActive)washWaveClock+=dt*flowAnimationSpeed*(speed/60)*0.65;acc+=dt;
+ if(playing){if(fullDemo){fullDemoElapsed+=dt;if(fullDemoElapsed>=75){if(continuousLoop){fullDemoElapsed=fullDemoElapsed%75;waveClock=0;washWaveClock=0;demoElapsed=0;washElapsed=0;elapsed=0;current=0;operationMode='production';washActive=false;routeProgress={flow:0,hot:0,cip:0};lastStage=0;}else{fullDemoElapsed=75;playing=false;fullDemo=false;}}if(fullDemo)applyFullDemo(fullDemoElapsed);}const visualSpeed=isolatedStage!==null?60:speed;const opDt=dt*speed;waveClock+=dt*flowAnimationSpeed*(visualSpeed/60)*(operationMode==='production'?3.25:1);for(const key of Object.keys(auxClocks)){if(key!=='reject'||auxIsProduction())auxClocks[key]+=dt*auxSpeeds[key]*(visualSpeed/60);}pumpClock+=dt*(visualSpeed/60);if(washActive)washWaveClock+=dt*flowAnimationSpeed*(visualSpeed/60)*0.65;acc+=dt;
   if(isolatedStage!==null){
-   isolatedElapsed+=dt;demoElapsed=isolatedElapsed;elapsed=isolatedElapsed*speed;
-   if(isolatedStage===1){washActive=true;washElapsed=isolatedElapsed*speed;}
-   const target=isolatedStage===0?Infinity:(isolatedStage===1?stages[1].time/speed:($('optimizedDemo').checked?demoDurations[isolatedStage]:stages[isolatedStage].time/speed));
-   if(isolatedElapsed>=target){playing=false;isolatedStage=null;washActive=false;}
+   // Apresentação isolada: duração visual fixa e repetição até o usuário parar.
+   const target=isolatedVisualDurations[isolatedStage];
+   isolatedElapsed=(isolatedElapsed+dt)%target;
+   demoElapsed=isolatedElapsed;
+   elapsed=isolatedElapsed*stages[isolatedStage].time/target;
+   if(isolatedStage===1){washActive=true;washElapsed=elapsed;}
+   // Reiniciar o desenho do percurso a cada volta sem interromper a execução.
+   if(isolatedElapsed<dt){waveClock=0;washWaveClock=0;routeProgress={flow:0,hot:0,cip:0};}
   }
   else if(fullDemo){/* Tempos e transições definidos pela apresentação, sem modificar a programação real. */}
   else if(operationMode==='production'){
@@ -263,10 +267,10 @@ function commercialSync(){
  commercialStageButtons.forEach((b,i)=>{b.classList.toggle('active',i===active&&playing);b.classList.toggle('done',fullDemo&&fullDemoElapsed>0&&i<active);});
  const title=stages[active].name;
  const phase=fullDemoPhases.find(p=>fullDemoElapsed<p.end)||fullDemoPhases[fullDemoPhases.length-1];
- const time=fullDemo?fmt(Math.max(0,75-fullDemoElapsed)):isolatedStage!==null?(isolatedStage===0?fmt(isolatedElapsed*speed):fmt(Math.max(0,(isolatedStage===1?stages[1].time/speed:($('optimizedDemo').checked?demoDurations[isolatedStage]:stages[isolatedStage].time/speed))-isolatedElapsed))):$('clock').textContent;
+ const time=fullDemo?fmt(Math.max(0,75-fullDemoElapsed)):isolatedStage!==null?fmt(Math.max(0,isolatedVisualDurations[isolatedStage]-isolatedElapsed)):$('clock').textContent;
  $('commercialClock').textContent=time;
- $('commercialBar').style.width=fullDemo?Math.min(100,fullDemoElapsed/75*100)+'%':isolatedStage!==null?(isolatedStage===0?0:Math.min(100,isolatedElapsed/(isolatedStage===1?stages[1].time/speed:($('optimizedDemo').checked?demoDurations[isolatedStage]:stages[isolatedStage].time/speed))*100))+'%':$('bar').style.width;
- $('commercialStatus').textContent=(playing?'● Em execução: ':'○ Selecionada: ')+title+(fullDemo?' • ciclo de 75 s':isolatedStage!==null?' • etapa isolada':'');
+ $('commercialBar').style.width=fullDemo?Math.min(100,fullDemoElapsed/75*100)+'%':isolatedStage!==null?Math.min(100,isolatedElapsed/isolatedVisualDurations[isolatedStage]*100)+'%':$('bar').style.width;
+ $('commercialStatus').textContent=(playing?'● Em execução: ':'○ Selecionada: ')+title+(fullDemo?' • ciclo de 75 s':isolatedStage!==null?' • etapa isolada em repetição':'');
  $('commercialSpeedLabel').textContent=speed+'×';
 }
 const originalUpdate=update;
