@@ -82,13 +82,7 @@ main{display:block;height:calc(100dvh - 64px);min-height:500px}
  .commercial-controls button{padding:6px 4px;font-size:9px}
 }
 
-/* Rv.01 — celular: a ponta da legenda coincide exatamente com a âncora 3D.
-   A etiqueta fica acima do ponto, em vez de ser deslocada para outra peça. */
-@media (max-width:750px), (pointer:coarse){
-  .aux-tag.mobile-anchored{transform:translate(-50%,calc(-100% - 9px));overflow:visible;text-overflow:clip;max-width:none}
-  .aux-tag.mobile-anchored:before{left:50%;top:100%;width:1px;height:9px;transform:translateX(-50%)}
-  .aux-tag.mobile-anchored:after{left:50%;top:calc(100% + 7px);width:5px;height:5px;transform:translateX(-50%)}
-}
+
 
 /* Rv.01: recolher os controles do ciclo apenas no celular; desktop intacto. */
 .commercial-controls-toggle{display:none}
@@ -311,7 +305,6 @@ for(const [key,label] of Object.entries(fixedNames)){const el=document.createEle
 $('toggleLabels').onclick=()=>{labelsVisible=!labelsVisible;$('toggleLabels').textContent=labelsVisible?'◉ Ocultar legendas':'◎ Mostrar legendas';};
 const labelPoint=new THREE.Vector3();const labelBox=new THREE.Box3();
 function refreshLabels(){
- for(const el of Object.values(labelElements))el.classList.remove('mobile-anchored');
  const show=labelsVisible&&model;
  const active={reject:auxIsProduction(),motorProduction:auxIsProduction(),motorCip:auxIsCipMotor(),coldWater:true,steam:true,cipTank:true,dosingPump:pumpClock%(pumpOn+pumpOff)<pumpOn};
  const w=$('view').clientWidth,h=$('view').clientHeight;
@@ -325,7 +318,7 @@ function refreshLabels(){
    candidates.push({el,x,y});
  }
  for(const [key,el] of Object.entries(labelElements)){
-   el.style.display='none';el.classList.remove('mobile-anchored');
+   el.style.display='none';
    if(key==='cipTankSecond'||key.startsWith('fixed_'))continue;
    if(!show||(playing?!active[key]:!auxAnchors[key]))continue;
    const names=auxParts[key];if(!names?.length&&!auxAnchors[key])continue;
@@ -335,23 +328,18 @@ function refreshLabels(){
  }
  if(show&&cipSecondAnchor){labelPoint.fromArray(cipSecondAnchor);model.localToWorld(labelPoint);addLabel(labelElements.cipTankSecond,labelPoint);}
  for(const key of fixedKeys){if(!show||!fixedAnchors[key])continue;labelPoint.fromArray(fixedAnchors[key]);model.localToWorld(labelPoint);addLabel(labelElements['fixed_'+key],labelPoint);}
- if(!mobile){
-   for(const {el,x,y} of candidates){if(x<12||x>w-135||y<38||y>h-28)continue;el.style.left=x+'px';el.style.top=y+'px';el.style.display='block';}
-   return;
- }
- // Celular: a bolinha e a haste apontam para a coordenada projetada da peça.
- // Não deslocar a etiqueta lateralmente para resolver colisões.
- const occupied=[];
+ // Mesma projeção e mesmo marcador da versão desktop, também no celular.
+ // Evita a divergência de transformações CSS e âncoras entre dispositivos.
  for(const {el,x,y} of candidates){
-   el.classList.add('mobile-anchored');
    el.style.left=x+'px';el.style.top=y+'px';el.style.display='block';
-   const width=Math.ceil(el.getBoundingClientRect().width)||100;
-   const height=Math.ceil(el.getBoundingClientRect().height)||24;
-   const box={l:x-width/2-3,r:x+width/2+3,t:y-height-14,b:y+4};
-   if(box.l<4||box.r>w-4||box.t<8||box.b>h-8||occupied.some(o=>box.l<o.r&&box.r>o.l&&box.t<o.b&&box.b>o.t)){
-     el.style.display='none';continue;
+   if(mobile){
+     const rect=el.getBoundingClientRect();
+     const viewRect=$('view').getBoundingClientRect();
+     if(rect.left<viewRect.left+3 || rect.right>viewRect.right-3 ||
+        rect.top<viewRect.top+3 || rect.bottom>viewRect.bottom-3){
+       el.style.display='none';
+     }
    }
-   occupied.push(box);
  }
 }
 let isolatedStage=null,isolatedElapsed=0;const isolatedVisualDurations=[14,14,14,16,14];
